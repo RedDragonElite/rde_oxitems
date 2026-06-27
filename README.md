@@ -214,18 +214,14 @@ The `data_file` approach is strongly recommended over editing `items.lua` direct
 
 ## 🚀 Installation
 
-### 1. Add RDWE-UI assets
-
-Copy `rdwe-ui.css` and `rdwe-ui.js` from your RDWE-UI build into `rde_oxitems/web/`. These are not bundled in the repository since they live in the shared RDE asset pipeline.
-
-### 2. Clone / drop into resources
+### 1. Clone / drop into resources
 
 ```bash
 cd resources
 git clone https://github.com/RedDragonElite/rde_oxitems.git
 ```
 
-### 3. Add to server.cfg
+### 2. Add to server.cfg
 
 ```
 ensure oxmysql
@@ -237,19 +233,19 @@ ensure rde_oxitems   # must start AFTER ox_inventory
 
 > ⚠️ `rde_oxitems` must start **after** `ox_inventory`. The runtime injection on startup relies on ox_inventory already being fully loaded.
 
-### 4. Database
+### 3. Database
 
 The `rde_items` table is created automatically on first start. No manual SQL import needed.
 
-### 5. Configure (optional)
+### 4. Configure (optional)
 
 Edit `config.lua` to set your admin groups, default language, and database table name.
 
-### 6. Bootstrap from existing items.lua (optional)
+### 5. Bootstrap from existing items.lua (optional)
 
 Open the panel in-game, click **Import from OX** — every item currently registered in ox_inventory is pulled into the DB. Safe to run on a live server.
 
-### 7. Restart
+### 6. Restart
 
 ```
 restart rde_oxitems
