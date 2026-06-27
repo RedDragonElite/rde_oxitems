@@ -1,0 +1,46 @@
+###################################################################################
+#                                                                                 #
+#      .:: RED DRAGON ELITE (RDE)  -  BLACK FLAG SOURCE LICENSE v6.66 ::.         #
+#                                                                                 #
+#   PROJECT:    RDE_OXITEMS v2.0.0 | OX INVENTORY ITEM MANAGER — DB EDITION       #
+#   ARCHITECT:  .:: RDE ⧌ Shin [ △ ᛋᛅᚱᛒᛅᚾᛏᛋ ᛒᛁᛏᛅ ▽ ] ::. | https://rd-elite.com   #
+#   ORIGIN:     https://github.com/RedDragonElite                                 #
+#                                                                                 #
+#   WARNING: THIS CODE IS PROTECTED BY DIGITAL VOODOO AND PURE HATRED FOR         #
+#            PEOPLE WHO SELL FREE RESOURCES ON TEBEX                              #
+#                                                                                 #
+#   [ THE RULES OF THE GAME ]                                                     #
+#                                                                                 #
+#   1. // THE "FUCK GREED" PROTOCOL (FREE USE)                                    #
+#      You are free to use, edit, and abuse this code on your server.             #
+#      Learn from it. Break it. Fix it. That is the hacker way.                   #
+#      Cost: 0.00€. If you paid for this, you got scammed by a rat.               #
+#                                                                                 #
+#   2. // THE TEBEX KILL SWITCH (COMMERCIAL SUICIDE)                              #
+#      Listen closely, you parasites:                                             #
+#      If I find this script on Tebex, Patreon, or in a paid "Premium Pack":      #
+#      > I will DMCA your store into oblivion.                                    #
+#      > I will publicly shame your community.                                    #
+#      > I hope your Config global stays nil and you never find out why.           #
+#      SELLING FREE WORK IS THEFT. AND I AM THE JUDGE.                            #
+#                                                                                 #
+#   3. // THE CREDIT OATH                                                         #
+#      Keep this header. If you remove my name, you admit you have no skill.      #
+#      You can add "Edited by [YourName]", but never erase the original creator.  #
+#      Don't be a skid. Respect the architecture.                                 #
+#                                                                                 #
+#   4. // THE CURSE OF THE COPY-PASTE                                             #
+#      This resource uses runtime ox_inventory injection via the Items() setter,  #
+#      a triple-layer admin check (ACE + ox_core groups + SteamID), statebag-     #
+#      driven realtime sync, and a local Config / return Config FiveM scope fix   #
+#      that took a full debug session to track down.                               #
+#      If you copy-paste without reading the changelog, you will ship a resource  #
+#      that errors on line 9 of server/main.lua and silently fails every admin    #
+#      check for every player forever. RTFM first. Issues second.                 #
+#                                                                                 #
+#   ---------------------------------------------------------------------------   #
+#   "We build the future on the graves of paid resources."                        #
+#   "REJECT MODERN MEDIOCRITY. EMBRACE RDE SUPERIORITY."                          #
+#   ---------------------------------------------------------------------------   #
+#                                                                                 #
+###################################################################################

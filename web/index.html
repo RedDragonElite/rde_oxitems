@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RDE OX Inventory Manager</title>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="rdwe-ui.css">
+<style>
+/* ── NUI overrides: transparent bg, full viewport ── */
+html, body {
+  margin: 0; padding: 0;
+  background: transparent;
+  overflow: hidden;
+  height: 100vh; width: 100vw;
+}
+
+#app {
+  display: none;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(14px);
+  padding: 14px;
+}
+
+/* ── LAYOUT ── */
+.mgr-layout {
+  max-width: 1440px;
+  height: calc(100vh - 28px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── TOPBAR ── */
+.mgr-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.mgr-topbar-left { display: flex; align-items: center; gap: 10px; }
+.mgr-topbar-title { font-size: 14px; font-weight: 600; color: var(--red); letter-spacing: 1px; text-transform: uppercase; }
+.mgr-topbar-right { display: flex; align-items: center; gap: 8px; }
+
+/* ── SEARCH / STATS BAR ── */
+.mgr-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.mgr-toolbar .input-group { flex: 1; }
+.mgr-stats {
+  display: flex; align-items: center; gap: 16px;
+  padding: 8px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  font-size: 11px; color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.mgr-stats strong { color: var(--red); }
+.mgr-stats .db-ok { color: var(--green); display: flex; align-items: center; gap: 4px; }
+
+/* ── ITEM GRID ── */
+.mgr-content {
+  flex: 1; min-height: 0;
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+  align-content: start;
+}
+
+/* ── ITEM CARD ── */
+.item-card {
+  background: var(--bg);
+  border: 1px solid var(--b2);
+  border-radius: 5px;
+  padding: 8px 8px 7px;
+  display: flex; flex-direction: column; align-items: center;
+  transition: border-color .18s, box-shadow .18s, transform .12s;
+  cursor: pointer;
+  position: relative;
+}
+.item-card:hover {
+  border-color: var(--red);
+  box-shadow: 0 0 10px rgba(255,0,0,0.15);
+  transform: translateY(-1px);
+}
+.item-img-wrap {
+  width: 48px; height: 48px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.item-img {
+  width: 48px; height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.6));
+}
+.item-img-placeholder {
+  width: 42px; height: 42px;
+  background: rgba(255,0,0,.07);
+  border: 1px dashed rgba(255,0,0,.25);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,0,0,.35);
+}
+.item-name {
+  font-size: 11px; font-weight: 600;
+  text-align: center; color: var(--fg);
+  margin-bottom: 1px;
+  word-break: break-word;
+  line-height: 1.3;
+}
+.item-tech {
+  font-size: 9px; color: var(--muted); margin-bottom: 4px;
+  font-family: monospace;
+  text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 100%;
+}
+.item-weight {
+  font-size: 10px; color: var(--muted2); margin-bottom: 5px;
+}
+.item-badges {
+  display: flex; gap: 3px; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 5px; min-height: 0;
+}
+.item-badges .badge { font-size: 8px; padding: 1px 4px; }
+.item-actions {
+  display: flex; gap: 4px; width: 100%;
+}
+.item-actions .btn { flex: 1; justify-content: center; padding: 3px 0; }
+
+/* ── PAGINATION ── */
+.mgr-pagination {
+  display: flex; justify-content: center;
+  align-items: center; gap: 4px;
+  padding-top: 12px; flex-shrink: 0;
+}
+
+/* ── FAB ── */
+.mgr-fab {
+  position: fixed; bottom: 36px; right: 36px;
+  z-index: 999;
+}
+.mgr-fab .btn {
+  width: 48px; height: 48px; border-radius: 50%;
+  padding: 0; font-size: 22px; font-weight: 300;
+  box-shadow: 0 4px 18px rgba(255,0,0,.35);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── MODAL OVERRIDE — make it fill nicely ── */
+.modal-xl {
+  max-width: 860px;
+  width: 95vw;
+}
+.modal-xl .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ── EXPORT MODAL CODE BLOCK ── */
+.lua-export {
+  background: var(--bg);
+  border: 1px solid var(--b1);
+  border-radius: 4px;
+  padding: 14px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--muted2);
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.6;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.lua-export .lk { color: #a78bfa; }  /* keywords */
+.lua-export .ls { color: #86efac; }  /* strings */
+.lua-export .ln { color: #fbbf24; }  /* numbers */
+.lua-export .lc { color: #6b7280; }  /* comments */
+.lua-export .lf { color: #60a5fa; }  /* field names */
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--b1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--red2); }
+
+/* ── NO ITEMS EMPTY STATE ── */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-state i { opacity: .3; }
+.empty-state p { font-size: 13px; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══ APP WRAPPER ═══ -->
+<div id="app">
+<div class="mgr-layout">
+
+  <!-- TOPBAR -->
+  <div class="mgr-topbar">
+    <div class="mgr-topbar-left">
+      <div class="live-dot"></div>
+      <span class="mgr-topbar-title">
+        <i data-lucide="package" width="14" height="14" style="vertical-align:middle;margin-right:6px"></i>
+        <span id="txt_title">OX Inventory Manager — DB Edition</span>
+      </span>
+      <span class="badge badge-red" id="version-badge">v2.0</span>
+    </div>
+    <div class="mgr-topbar-right">
+      <button class="btn btn-sm btn-blue" id="importBtn">
+        <i data-lucide="cloud-download" width="12" height="12"></i>
+        <span id="txt_import">Import from OX</span>
+      </button>
+      <button class="btn btn-sm btn-secondary" id="exportLuaBtn">
+        <i data-lucide="file-code" width="12" height="12"></i>
+        <span id="txt_export_lua">Export Lua</span>
+      </button>
+      <button class="btn btn-sm btn-danger" id="closeBtn">
+        <i data-lucide="x" width="12" height="12"></i>
+        <span id="txt_close">Close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="mgr-toolbar">
+    <div class="input-group" style="flex:1">
+      <input class="input" type="text" id="searchInput" placeholder="Search items...">
+      <div class="input-addon"><i data-lucide="search" width="13" height="13"></i></div>
+    </div>
+    <button class="btn btn-sm" id="reloadBtn">
+      <i data-lucide="refresh-cw" width="12" height="12"></i>
+      <span id="txt_reload">Reload</span>
+    </button>
+    <div class="mgr-stats">
+      <span><span id="txt_total_items">Total</span>: <strong id="totalItems">0</strong></span>
+      <span>|</span>
+      <span><span id="txt_page">Page</span> <strong id="currentPageNum">1</strong> <span id="txt_of">of</span> <strong id="totalPagesNum">1</strong></span>
+      <span>|</span>
+      <span class="db-ok">
+        <i data-lucide="database" width="11" height="11"></i>
+        <span id="txt_database">rde_items</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="mgr-content">
+    <div class="items-grid" id="itemsGrid"></div>
+    <div class="mgr-pagination" id="pagination"></div>
+  </div>
+
+</div><!-- /mgr-layout -->
+
+<!-- FAB: Add Item -->
+<div class="mgr-fab">
+  <button class="btn btn-primary" id="addNewItem" data-tooltip="New Item" data-tooltip-right>
+    <i data-lucide="plus" width="20" height="20"></i>
+  </button>
+</div>
+
+</div><!-- /app -->
+
+
+<!-- ═══ ITEM EDITOR MODAL ═══ -->
+<div class="modal-backdrop" id="modal-item-editor">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i data-lucide="edit-3" width="14" height="14"></i>
+        <span id="modalTitle">Edit Item</span>
+      </div>
+      <button class="modal-close" data-modal-close="modal-item-editor">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- TABS -->
+      <div data-rdwe-tabs>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="tab-basic"    id="tab_basic_lbl">Basic</button>
+          <button class="tab-btn" data-tab="tab-behavior"        id="tab_behavior_lbl">Behavior</button>
+          <button class="tab-btn" data-tab="tab-weapon"          id="tab_weapon_lbl">Weapon</button>
+          <button class="tab-btn" data-tab="tab-client"          id="tab_client_lbl">Client</button>
+          <button class="tab-btn" data-tab="tab-server"          id="tab_server_lbl">Server</button>
+          <button class="tab-btn" data-tab="tab-advanced"        id="tab_advanced_lbl">Advanced</button>
+        </div>
+
+        <!-- BASIC -->
+        <div id="tab-basic" class="tab-pane active">
+          <div class="g2">
+            <div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_name">Item Name <span class="required">*</span></label>
+                <input class="input" id="itemName" type="text" maxlength="50" placeholder="my_item">
+                <div class="form-hint" id="hint_name">Lowercase, numbers and underscores only</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_label">Display Name <span class="required">*</span></label>
+                <input class="input" id="itemLabel" type="text" maxlength="100" placeholder="My Item">
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_weight">Weight (grams) <span class="required">*</span></label>
+                <input class="input" id="itemWeight" type="number" step="1" min="0" value="100">
+              </div>
+            </div>
+            <div>
+              <div class="form-group" style="height:100%">
+                <label class="form-label" id="lbl_description">Description</label>
+                <textarea class="input" id="itemDescription" maxlength="500" rows="7" placeholder="Item description..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BEHAVIOR -->
+        <div id="tab-behavior" class="tab-pane">
+          <div class="g2">
+            <div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" id="itemStack" checked>
+                  <div class="box"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                  <span id="lbl_stack">Stackable</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" id="itemClose" checked>
+                  <div class="box"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                  <span id="lbl_close">Closes Inventory</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" id="itemAllowArmed">
+                  <div class="box"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                  <span id="lbl_allow_armed">Allow while armed</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_consume">Consume (0–1)</label>
+                <input class="input" id="itemConsume" type="number" step="0.01" min="0" max="1" value="0">
+                <div class="form-hint" id="hint_consume">0 = unlimited, 1 = single use</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_degrade">Degrade time (minutes)</label>
+                <input class="input" id="itemDegrade" type="number" step="1" min="0" placeholder="Empty = no degrade">
+                <div class="form-hint" id="hint_degrade">Empty = no degradation</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WEAPON -->
+        <div id="tab-weapon" class="tab-pane">
+          <div class="callout callout-orange" style="margin-bottom:16px">
+            <div class="callout-head"><i data-lucide="alert-triangle" width="12" height="12"></i> Weapon Items</div>
+            Set <b>weapon = true</b> and configure ammo/durability below. The item image must be in ox_inventory/web/images/.
+          </div>
+          <div class="g2">
+            <div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" id="itemWeapon">
+                  <div class="box"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                  <span id="lbl_weapon">Is a Weapon</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_ammoname">Ammo Name</label>
+                <input class="input" id="itemAmmoname" type="text" placeholder="ammo-9">
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_ammotype">Ammo Type</label>
+                <input class="input" id="itemAmmotype" type="text" placeholder="AMMO_PISTOL">
+              </div>
+            </div>
+            <div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_durability">Durability</label>
+                <input class="input" id="itemDurability" type="number" min="0" placeholder="e.g. 100">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLIENT -->
+        <div id="tab-client" class="tab-pane">
+          <div class="g2">
+            <div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_usetime">Use time (ms)</label>
+                <input class="input" id="clientUsetime" type="number" min="0" placeholder="2500">
+              </div>
+              <div class="form-group">
+                <label class="checkbox">
+                  <input type="checkbox" id="clientCancel">
+                  <div class="box"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                  <span id="lbl_cancel">Cancellable</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_export">Client Export</label>
+                <input class="input" id="clientExport" type="text" placeholder="myresource.useItem">
+                <div class="form-hint">format: resourceName.exportName</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_event">Client Event</label>
+                <input class="input" id="clientEvent" type="text" placeholder="myresource:onUse">
+              </div>
+            </div>
+            <div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_status">Status Effects (JSON)</label>
+                <textarea class="input" id="clientStatus" rows="3" placeholder='{"hunger": 200000, "thirst": 100000}'></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_anim">Animation (JSON)</label>
+                <textarea class="input" id="clientAnim" rows="3" placeholder='{"dict": "mp_player_inteat@burger", "clip": "mp_player_int_eat_burger_fp"}'></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label" id="lbl_prop">Prop (JSON)</label>
+                <textarea class="input" id="clientProp" rows="3" placeholder='{"model": "prop_cs_burger_01", "pos": {"x":0,"y":0,"z":0}, "rot": {"x":0,"y":0,"z":0}}'></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SERVER -->
+        <div id="tab-server" class="tab-pane">
+          <div class="callout callout-blue" style="margin-bottom:16px">
+            <div class="callout-head"><i data-lucide="server" width="12" height="12"></i> Server Callbacks</div>
+            Server export/event is triggered when the item is used. The resource must be running for exports to work.
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="lbl_server_export">Server Export</label>
+            <input class="input" id="serverExport" type="text" placeholder="myresource.onItemUsed">
+            <div class="form-hint">format: resourceName.exportName (dot, not colon!)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="lbl_server_event">Server Event</label>
+            <input class="input" id="serverEvent" type="text" placeholder="myresource:itemUsed">
+          </div>
+        </div>
+
+        <!-- ADVANCED -->
+        <div id="tab-advanced" class="tab-pane">
+          <div class="form-group">
+            <label class="form-label" id="lbl_buttons">Context Menu Buttons (JSON Array)</label>
+            <textarea class="input" id="itemButtons" rows="5" placeholder='[{"label": "Use", "action": "myresource.onButton"}]'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="lbl_metadata">Additional Metadata (JSON)</label>
+            <textarea class="input" id="itemMetadata" rows="5" placeholder='{"category": "food", "rarity": "common"}'></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-modal-close="modal-item-editor" id="txt_cancel_btn">Cancel</button>
+      <button class="btn btn-primary" id="saveItem">
+        <i data-lucide="save" width="12" height="12"></i>
+        <span id="txt_save">Save</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EXPORT LUA MODAL ═══ -->
+<div class="modal-backdrop" id="modal-export-lua">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i data-lucide="file-code" width="14" height="14"></i>
+        Export Lua — items.lua
+      </div>
+      <button class="modal-close" data-modal-close="modal-export-lua">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-green" style="margin-bottom:14px">
+        <div class="callout-head"><i data-lucide="check-circle" width="12" height="12"></i> How to use</div>
+        Copy this block and paste it into <code>ox_inventory/data/items.lua</code>.<br>
+        Or create <code>ox_inventory/data/rde_items.lua</code>, paste it there, and add <code>data_file 'data/rde_items.lua'</code> to ox_inventory's fxmanifest — this way it survives ox_inventory updates.
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+        <button class="btn btn-sm btn-primary" id="copyLuaBtn">
+          <i data-lucide="copy" width="12" height="12"></i> Copy All
+        </button>
+        <span class="badge badge-muted" id="exportItemCount">0 items</span>
+        <div style="flex:1"></div>
+        <label class="checkbox" style="margin:0">
+          <input type="checkbox" id="exportOnlyNew" checked>
+          <div class="box"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span style="font-size:12px">Only DB items (not original ox_inventory items)</span>
+        </label>
+      </div>
+      <div class="lua-export" id="luaExportCode">-- Loading...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-modal-close="modal-export-lua">Close</button>
+      <button class="btn btn-primary" id="copyLuaBtn2">
+        <i data-lucide="copy" width="12" height="12"></i> Copy to Clipboard
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DELETE CONFIRM MODAL ═══ -->
+<div class="modal-backdrop" id="modal-confirm-delete">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="trash-2" width="14" height="14"></i> Confirm Delete</div>
+      <button class="modal-close" data-modal-close="modal-confirm-delete">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-red">
+        <div class="callout-head"><i data-lucide="alert-triangle" width="12" height="12"></i> Irreversible</div>
+        <span id="deleteConfirmText">Delete this item from the database?</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-modal-close="modal-confirm-delete">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn">
+        <i data-lucide="trash-2" width="12" height="12"></i> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ IMPORT CONFIRM MODAL ═══ -->
+<div class="modal-backdrop" id="modal-confirm-import">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title"><i data-lucide="cloud-download" width="14" height="14"></i> Import from OX</div>
+      <button class="modal-close" data-modal-close="modal-confirm-import">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="callout callout-blue">
+        <div class="callout-head"><i data-lucide="info" width="12" height="12"></i> Info</div>
+        This will import all items currently registered in ox_inventory into the rde_items database. Existing entries will be updated.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-modal-close="modal-confirm-import">Cancel</button>
+      <button class="btn btn-blue" id="confirmImportBtn">
+        <i data-lucide="cloud-download" width="12" height="12"></i> Import
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="rdwe-ui.js"></script>
+<script>
+// ================================================================
+// STATE
+// ================================================================
+let currentItems   = [];
+let filteredItems  = [];
+let currentPage    = 1;
+let pendingDelete  = null;
+let isEditMode     = false;
+const ITEMS_PER_PAGE = 24;
+const MAX_PAGES      = 5;
+
+// ── DB-only item names (tracked on import) ──
+let dbItemNames = new Set();
+
+// Language strings (EN default — overridden by server locale)
+let L = {
+  nui_title:'OX Inventory Manager — DB Edition',nui_import:'Import from OX',nui_close:'Close',
+  nui_reload:'Reload',nui_search:'Search items...',nui_total_items:'Total',nui_page:'Page',
+  nui_of:'of',nui_database:'rde_items',nui_weight_unit:'g',nui_edit_item:'Edit Item',
+  nui_new_item:'Create New Item',nui_cancel:'Cancel',nui_save:'Save',nui_first:'First',
+  nui_prev:'Back',nui_next:'Next',nui_last:'Last',nui_no_items:'No items found',
+  nui_confirm_delete:'Delete item "%s" from the database?',
+  nui_confirm_import:'Import all items from ox_inventory into the database?',
+  nui_badge_weapon:'Weapon',nui_badge_consume:'Consumable',nui_badge_degrade:'Degrades',
+  tab_basic:'Basic',tab_behavior:'Behavior',tab_weapon:'Weapon',tab_client:'Client',
+  tab_server:'Server',tab_advanced:'Advanced',
+  field_name:'Item Name',field_name_hint:'Lowercase, numbers and underscores only',
+  field_label:'Display Name',field_weight:'Weight (grams)',field_description:'Description',
+  field_stack:'Stackable',field_close:'Closes Inventory',field_allow_armed:'Allow while armed',
+  field_consume:'Consume (0–1)',field_consume_hint:'0 = unlimited, 1 = single use',
+  field_degrade:'Degrade time (minutes)',field_degrade_hint:'Empty = no degradation',
+  field_weapon:'Is a Weapon',field_ammoname:'Ammo Name',field_ammotype:'Ammo Type',
+  field_durability:'Durability',field_usetime:'Use time (ms)',field_cancel:'Cancellable',
+  field_export:'Client Export',field_event:'Client Event',field_status:'Status Effects (JSON)',
+  field_anim:'Animation (JSON)',field_prop:'Prop (JSON)',
+  field_server_export:'Server Export',field_server_event:'Server Event',
+  field_buttons:'Context Menu Buttons (JSON Array)',field_metadata:'Additional Metadata (JSON)',
+  val_name_label_required:'Name and Label are required!',
+  val_name_invalid:'Item name may only contain lowercase letters, numbers and underscores!',
+  val_weight_negative:'Weight must be positive!',
+  txt_export_lua:'Export Lua',
+};
+
+function applyLocale(nl) {
+  if (!nl) return;
+  L = Object.assign({}, L, nl);
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const ph  = (id, v) => { const e = document.getElementById(id); if (e) e.placeholder = v; };
+  set('txt_title', L.nui_title); set('txt_import', L.nui_import); set('txt_close', L.nui_close);
+  set('txt_reload', L.nui_reload); set('txt_total_items', L.nui_total_items);
+  set('txt_page', L.nui_page); set('txt_of', L.nui_of); set('txt_database', L.nui_database);
+  set('txt_export_lua', L.txt_export_lua || 'Export Lua');
+  ph('searchInput', L.nui_search);
+  // tabs
+  set('tab_basic_lbl', L.tab_basic); set('tab_behavior_lbl', L.tab_behavior);
+  set('tab_weapon_lbl', L.tab_weapon); set('tab_client_lbl', L.tab_client);
+  set('tab_server_lbl', L.tab_server); set('tab_advanced_lbl', L.tab_advanced);
+  // labels
+  set('lbl_name', L.field_name); set('hint_name', L.field_name_hint);
+  set('lbl_label', L.field_label); set('lbl_weight', L.field_weight);
+  set('lbl_description', L.field_description); set('lbl_stack', L.field_stack);
+  set('lbl_close', L.field_close); set('lbl_allow_armed', L.field_allow_armed);
+  set('lbl_consume', L.field_consume); set('hint_consume', L.field_consume_hint);
+  set('lbl_degrade', L.field_degrade); set('hint_degrade', L.field_degrade_hint);
+  set('lbl_weapon', L.field_weapon); set('lbl_ammoname', L.field_ammoname);
+  set('lbl_ammotype', L.field_ammotype); set('lbl_durability', L.field_durability);
+  set('lbl_usetime', L.field_usetime); set('lbl_cancel', L.field_cancel);
+  set('lbl_export', L.field_export); set('lbl_event', L.field_event);
+  set('lbl_status', L.field_status); set('lbl_anim', L.field_anim);
+  set('lbl_prop', L.field_prop); set('lbl_server_export', L.field_server_export);
+  set('lbl_server_event', L.field_server_event); set('lbl_buttons', L.field_buttons);
+  set('lbl_metadata', L.field_metadata); set('txt_cancel_btn', L.nui_cancel);
+  set('txt_save', L.nui_save);
+}
+function sprintf(s, ...a) { return s.replace(/%s/g, () => a.shift()); }
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// NUI BRIDGE
+// ================================================================
+function getRes() {
+  return (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'rde_oxitems' : GetParentResourceName();
+}
+function post(url, data={}) {
+  return fetch(`https://${getRes()}/${url}`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)
+  });
+}
+
+window.addEventListener('message', ({ data }) => {
+  switch (data.type) {
+    case 'openManager':   applyLocale(data.lang); openManager(data.items, data.dbItems); break;
+    case 'updateItems':   updateItems(data.items); break;
+    case 'updateSingleItem': updateSingleItem(data.item); break;
+    case 'close':         closeManager(); break;
+  }
+});
+
+// ================================================================
+// OPEN / CLOSE
+// ================================================================
+function openManager(items, dbItems) {
+  if (dbItems) dbItemNames = new Set(Object.keys(dbItems));
+  buildList(items);
+  currentPage = 1;
+  filterItems();
+  document.getElementById('app').style.display = 'block';
+  lucide.createIcons();
+  // re-init RDWE tabs after DOM update
+  if (window.RDWE) RDWE.initTabs();
+}
+function closeManager() {
+  document.getElementById('app').style.display = 'none';
+  post('close');
+}
+function buildList(items) {
+  currentItems = Object.entries(items).map(([name, d]) => ({ name, ...d }));
+  currentItems.sort((a,b) => (a.label||a.name).localeCompare(b.label||b.name));
+}
+function updateItems(items) { buildList(items); filterItems(); }
+function updateSingleItem(item) {
+  const idx = currentItems.findIndex(i => i.name === item.name);
+  if (idx !== -1) currentItems[idx] = { ...currentItems[idx], ...item };
+  else { currentItems.push(item); currentItems.sort((a,b) => (a.label||a.name).localeCompare(b.label||b.name)); }
+  filterItems();
+}
+
+// ================================================================
+// FILTER + RENDER
+// ================================================================
+function filterItems(term = '') {
+  if (term) {
+    const s = term.toLowerCase();
+    filteredItems = currentItems.filter(i =>
+      (i.name||'').toLowerCase().includes(s) ||
+      (i.label||'').toLowerCase().includes(s) ||
+      (i.description||'').toLowerCase().includes(s)
+    );
+  } else {
+    filteredItems = [...currentItems];
+  }
+  currentPage = 1;
+  renderItems();
+}
+
+function renderItems() {
+  const total = Math.ceil(filteredItems.length / ITEMS_PER_PAGE) || 1;
+  const slice = filteredItems.slice((currentPage-1)*ITEMS_PER_PAGE, currentPage*ITEMS_PER_PAGE);
+  const grid  = document.getElementById('itemsGrid');
+  grid.innerHTML = '';
+
+  if (!slice.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <i data-lucide="package-x" width="48" height="48"></i>
+      <p>${L.nui_no_items}</p>
+    </div>`;
+    lucide.createIcons(); updateStats(total); renderPagination(total); return;
+  }
+
+  slice.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+
+    // badges
+    const badges = [];
+    if (item.weapon)      badges.push(`<span class="badge badge-red">${escHtml(L.nui_badge_weapon)}</span>`);
+    if (item.consume > 0) badges.push(`<span class="badge badge-orange">${escHtml(L.nui_badge_consume)}</span>`);
+    if (item.degrade)     badges.push(`<span class="badge badge-muted">${escHtml(L.nui_badge_degrade)}</span>`);
+    if (dbItemNames.has(item.name)) badges.push(`<span class="badge badge-green" style="font-size:9px">DB</span>`);
+
+    card.innerHTML = `
+      <div class="item-img-wrap">
+        <img class="item-img" data-item-name="${escHtml(item.name)}" src="nui://ox_inventory/web/images/${escHtml(item.name)}.png" alt="">
+      </div>
+      <div class="item-name">${escHtml(item.label || item.name)}</div>
+      <div class="item-tech">${escHtml(item.name)}</div>
+      <div class="item-badges">${badges.join('')}</div>
+      <div class="item-weight">${L.nui_weight_unit==='g'?'Weight':'Gewicht'}: ${item.weight||0}${L.nui_weight_unit}</div>
+      <div class="item-actions">
+        <button class="btn btn-xs btn-primary edit-btn" data-item="${encodeURIComponent(JSON.stringify(item))}">
+          <i data-lucide="edit" width="11" height="11"></i>
+        </button>
+        <button class="btn btn-xs btn-danger delete-btn" data-name="${escHtml(item.name)}">
+          <i data-lucide="trash-2" width="11" height="11"></i>
+        </button>
+      </div>
+    `;
+
+    // image fallback
+    const img = card.querySelector('.item-img');
+    img.onerror = function() {
+      this.onerror = function() {
+        this.style.display = 'none';
+        this.parentElement.innerHTML = `<div class="item-img-placeholder">
+          <i data-lucide="package" width="28" height="28"></i>
+        </div>`;
+        lucide.createIcons();
+      };
+      this.src = 'nui://ox_inventory/web/images/default.png';
+    };
+
+    grid.appendChild(card);
+  });
+
+  lucide.createIcons();
+  updateStats(total);
+  renderPagination(total);
+  attachCardListeners();
+}
+
+function updateStats(total) {
+  document.getElementById('totalItems').textContent    = filteredItems.length;
+  document.getElementById('currentPageNum').textContent = currentPage;
+  document.getElementById('totalPagesNum').textContent   = total;
+}
+
+function renderPagination(total) {
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  if (total <= 1) return;
+
+  const mkBtn = (label, page, disabled, active) => {
+    const b = document.createElement('a');
+    b.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+    b.textContent = label;
+    b.href = '#';
+    b.onclick = e => { e.preventDefault(); if (!disabled) { currentPage = page; renderItems(); } };
+    return b;
+  };
+
+  pag.appendChild(mkBtn(`← ${L.nui_prev}`, currentPage-1, currentPage===1));
+  const s = Math.max(1, currentPage - Math.floor(MAX_PAGES/2));
+  const e = Math.min(total, s + MAX_PAGES - 1);
+  for (let i = s; i <= e; i++) pag.appendChild(mkBtn(String(i), i, false, i===currentPage));
+  pag.appendChild(mkBtn(`${L.nui_next} →`, currentPage+1, currentPage===total));
+}
+
+// ================================================================
+// CARD EVENTS
+// ================================================================
+function attachCardListeners() {
+  document.querySelectorAll('.edit-btn').forEach(b => {
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      try { openItemModal(JSON.parse(decodeURIComponent(b.dataset.item))); }
+      catch(err) { console.error(err); }
+    });
+  });
+  document.querySelectorAll('.delete-btn').forEach(b => {
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      pendingDelete = b.dataset.name;
+      document.getElementById('deleteConfirmText').textContent =
+        sprintf(L.nui_confirm_delete, b.dataset.name);
+      RDWE.openModal('modal-confirm-delete');
+    });
+  });
+}
+
+// ================================================================
+// ITEM MODAL
+// ================================================================
+function f(id) { return document.getElementById(id); }
+
+function openItemModal(item = null) {
+  isEditMode = !!item;
+  f('modalTitle').textContent = item ? L.nui_edit_item : L.nui_new_item;
+
+  if (item) {
+    f('itemName').value        = item.name;       f('itemName').disabled = true;
+    f('itemLabel').value       = item.label || '';
+    f('itemWeight').value      = item.weight || 0;
+    f('itemDescription').value = item.description || '';
+    f('itemStack').checked     = item.stack !== false;
+    f('itemClose').checked     = item.close !== false;
+    f('itemAllowArmed').checked = item.allowArmed || false;
+    f('itemConsume').value     = item.consume || 0;
+    f('itemDegrade').value     = item.degrade || '';
+    f('itemWeapon').checked    = item.weapon || false;
+    f('itemAmmoname').value    = item.ammoname || '';
+    f('itemAmmotype').value    = item.ammotype || '';
+    f('itemDurability').value  = item.durability || '';
+    const c = item.client || {};
+    f('clientUsetime').value   = c.usetime || '';
+    f('clientCancel').checked  = c.cancel  || false;
+    f('clientExport').value    = c.export  || '';
+    f('clientEvent').value     = c.event   || '';
+    f('clientStatus').value    = c.status  ? JSON.stringify(c.status,null,2) : '';
+    f('clientAnim').value      = c.anim    ? JSON.stringify(c.anim,null,2)   : '';
+    f('clientProp').value      = c.prop    ? JSON.stringify(c.prop,null,2)   : '';
+    const s = item.server || {};
+    f('serverExport').value    = s.export  || '';
+    f('serverEvent').value     = s.event   || '';
+    f('itemButtons').value     = item.buttons  ? JSON.stringify(item.buttons,null,2)  : '';
+    f('itemMetadata').value    = item.metadata ? JSON.stringify(item.metadata,null,2) : '';
+  } else {
+    ['itemName','itemLabel','itemDescription','itemAmmoname','itemAmmotype',
+     'clientExport','clientEvent','clientStatus','clientAnim','clientProp',
+     'serverExport','serverEvent','itemButtons','itemMetadata'].forEach(id => { f(id).value=''; });
+    ['itemDurability','itemDegrade','clientUsetime'].forEach(id => { f(id).value=''; });
+    f('itemName').disabled = false;
+    f('itemWeight').value = 100; f('itemConsume').value = 0;
+    f('itemStack').checked = true; f('itemClose').checked = true;
+    ['itemAllowArmed','itemWeapon','clientCancel'].forEach(id => { f(id).checked = false; });
+  }
+
+  // Reset to Basic tab
+  document.querySelectorAll('#modal-item-editor .tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', i===0);
+  });
+  document.querySelectorAll('#modal-item-editor .tab-pane').forEach((p,i) => {
+    p.classList.toggle('active', i===0);
+  });
+
+  RDWE.openModal('modal-item-editor');
+}
+
+function safeJSON(s, fb=null) {
+  if (!s || !s.trim()) return fb;
+  try { return JSON.parse(s); } catch { return fb; }
+}
+
+function saveItem() {
+  const name  = f('itemName').value.trim();
+  const label = f('itemLabel').value.trim();
+  const weight = parseInt(f('itemWeight').value) || 0;
+
+  if (!name || !label) { RDWE.toast.error('Validation', L.val_name_label_required); return; }
+  if (!isEditMode && !/^[a-z0-9_]+$/.test(name)) { RDWE.toast.error('Validation', L.val_name_invalid); return; }
+  if (weight < 0) { RDWE.toast.error('Validation', L.val_weight_negative); return; }
+
+  const item = {
+    name, label, weight,
+    description: f('itemDescription').value.trim() || null,
+    stack: f('itemStack').checked,
+    close: f('itemClose').checked,
+    allowArmed: f('itemAllowArmed').checked || null,
+    consume: parseFloat(f('itemConsume').value) || 0,
+    degrade: parseInt(f('itemDegrade').value) || null,
+    weapon: f('itemWeapon').checked || null,
+    ammoname: f('itemAmmoname').value.trim() || null,
+    ammotype: f('itemAmmotype').value.trim() || null,
+    durability: parseInt(f('itemDurability').value) || null,
+  };
+
+  const cu = parseInt(f('clientUsetime').value) || null;
+  const cc = f('clientCancel').checked;
+  const ce = f('clientExport').value.trim();
+  const cev = f('clientEvent').value.trim();
+  const cs = safeJSON(f('clientStatus').value);
+  const ca = safeJSON(f('clientAnim').value);
+  const cp = safeJSON(f('clientProp').value);
+  if (cu||cc||ce||cev||cs||ca||cp) {
+    item.client = {};
+    if (cu)  item.client.usetime = cu;
+    if (cc)  item.client.cancel  = true;
+    if (ce)  item.client.export  = ce;
+    if (cev) item.client.event   = cev;
+    if (cs)  item.client.status  = cs;
+    if (ca)  item.client.anim    = ca;
+    if (cp)  item.client.prop    = cp;
+  }
+
+  const se = f('serverExport').value.trim();
+  const sev = f('serverEvent').value.trim();
+  if (se||sev) { item.server = {}; if(se) item.server.export=se; if(sev) item.server.event=sev; }
+
+  const btns = safeJSON(f('itemButtons').value);
+  const meta = safeJSON(f('itemMetadata').value);
+  if (btns) item.buttons  = btns;
+  if (meta) item.metadata = meta;
+
+  const ep = isEditMode ? 'updateItem' : 'createItem';
+  post(ep, { item }).then(() => {
+    RDWE.closeModal('modal-item-editor');
+    setTimeout(() => post('reloadItems'), 400);
+  });
+}
+
+// ================================================================
+// LUA EXPORT GENERATOR
+// ================================================================
+function luaVal(v) {
+  if (v === null || v === undefined) return 'nil';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (typeof v === 'number')  return String(v);
+  if (typeof v === 'string')  return `'${v.replace(/'/g, "\\'")}'`;
+  if (typeof v === 'object')  return jsonToLua(v, 2);
+  return 'nil';
+}
+
+function jsonToLua(obj, indent = 1) {
+  const pad = '    '.repeat(indent);
+  const pad0 = '    '.repeat(indent - 1);
+  if (Array.isArray(obj)) {
+    if (!obj.length) return '{}';
+    const items = obj.map(v => `${pad}${luaVal(v)}`).join(',\n');
+    return `{\n${items},\n${pad0}}`;
+  }
+  const keys = Object.keys(obj).filter(k => obj[k] !== null && obj[k] !== undefined);
+  if (!keys.length) return '{}';
+  const lines = keys.map(k => `${pad}${k} = ${luaVal(obj[k])}`).join(',\n');
+  return `{\n${lines},\n${pad0}}`;
+}
+
+function itemToLua(item) {
+  const lines = [];
+  lines.push(`    ['${item.name}'] = {`);
+  lines.push(`        label = '${(item.label||item.name).replace(/'/g,"\\'")}',`);
+  lines.push(`        weight = ${item.weight || 0},`);
+  if (item.description) lines.push(`        description = '${item.description.replace(/'/g,"\\'")}',`);
+  if (item.stack === false) lines.push(`        stack = false,`);
+  if (item.close === false) lines.push(`        close = false,`);
+  if (item.allowArmed)      lines.push(`        allowArmed = true,`);
+  if (item.consume)         lines.push(`        consume = ${item.consume},`);
+  if (item.degrade)         lines.push(`        degrade = ${item.degrade},`);
+  if (item.weapon)          lines.push(`        weapon = true,`);
+  if (item.ammoname)        lines.push(`        ammoname = '${item.ammoname}',`);
+  if (item.ammotype)        lines.push(`        ammotype = '${item.ammotype}',`);
+  if (item.durability)      lines.push(`        durability = ${item.durability},`);
+
+  // client sub-table
+  if (item.client && Object.keys(item.client).length) {
+    lines.push(`        client = {`);
+    const c = item.client;
+    if (c.usetime)  lines.push(`            usetime = ${c.usetime},`);
+    if (c.cancel)   lines.push(`            cancel = true,`);
+    if (c.export)   lines.push(`            export = '${c.export}',`);
+    if (c.event)    lines.push(`            event = '${c.event}',`);
+    if (c.status)   lines.push(`            status = ${jsonToLua(c.status, 4)},`);
+    if (c.anim)     lines.push(`            anim = ${jsonToLua(c.anim, 4)},`);
+    if (c.prop)     lines.push(`            prop = ${jsonToLua(c.prop, 4)},`);
+    // disable sub-table
+    if (c.disable && Object.keys(c.disable).length) {
+      lines.push(`            disable = ${jsonToLua(c.disable, 4)},`);
+    }
+    lines.push(`        },`);
+  }
+
+  // server sub-table
+  if (item.server && Object.keys(item.server).length) {
+    lines.push(`        server = {`);
+    const s = item.server;
+    if (s.export) lines.push(`            export = '${s.export}',`);
+    if (s.event)  lines.push(`            event = '${s.event}',`);
+    lines.push(`        },`);
+  }
+
+  // buttons
+  if (item.buttons && item.buttons.length) {
+    lines.push(`        buttons = ${jsonToLua(item.buttons, 2)},`);
+  }
+
+  lines.push(`    },`);
+  return lines.join('\n');
+}
+
+function generateLua(onlyDB) {
+  const items = onlyDB
+    ? filteredItems.filter(i => dbItemNames.has(i.name))
+    : filteredItems;
+
+  if (!items.length) return '-- No items to export.';
+
+  const header = [
+    `-- ════════════════════════════════════════════════════════`,
+    `-- RDE OX Items Export — generated by rde_oxitems v2.0`,
+    `-- Generated: ${new Date().toISOString().slice(0,19).replace('T',' ')}`,
+    `-- Items: ${items.length}`,
+    `-- ════════════════════════════════════════════════════════`,
+    `-- Paste into: ox_inventory/data/items.lua`,
+    `-- Or put into ox_inventory/data/rde_items.lua and add:`,
+    `--   data_file 'data/rde_items.lua'  (in ox_inventory fxmanifest)`,
+    `-- ════════════════════════════════════════════════════════`,
+    ``,
+  ].join('\n');
+
+  const body = items.map(itemToLua).join('\n\n');
+  return header + body;
+}
+
+function openExportModal() {
+  const onlyDB = f('exportOnlyNew').checked;
+  const lua = generateLua(onlyDB);
+  const src = syntaxHighlightLua(lua);
+  f('luaExportCode').innerHTML = src;
+  const exportCount = onlyDB
+    ? filteredItems.filter(i => dbItemNames.has(i.name)).length
+    : filteredItems.length;
+  f('exportItemCount').textContent = `${exportCount} items`;
+  RDWE.openModal('modal-export-lua');
+}
+
+function syntaxHighlightLua(code) {
+  return escHtml(code)
+    .replace(/--[^\n]*/g, m => `<span class="lc">${m}</span>`)
+    .replace(/\b(true|false|nil|and|or|not|local|function|return|if|then|else|end|for|do|while|in|pairs)\b/g,
+      m => `<span class="lk">${m}</span>`)
+    .replace(/'([^'\\]|\\.)*'/g, m => `<span class="ls">${m}</span>`)
+    .replace(/\b(\d+\.?\d*)\b/g, m => `<span class="ln">${m}</span>`)
+    .replace(/(\w+)\s*=/g, (_, k) => `<span class="lf">${k}</span> =`);
+}
+
+function copyLua() {
+  const onlyDB = f('exportOnlyNew').checked;
+  const text = generateLua(onlyDB);
+  navigator.clipboard.writeText(text).then(() => {
+    RDWE.toast.success('Copied!', 'Lua code copied to clipboard.');
+  }).catch(() => {
+    RDWE.toast.error('Error', 'Clipboard not available in NUI. Use the text above.');
+  });
+}
+
+// ================================================================
+// INIT — bind all buttons
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  f('closeBtn').addEventListener('click', closeManager);
+  f('reloadBtn').addEventListener('click', () => post('reloadItems'));
+
+  f('importBtn').addEventListener('click', () => RDWE.openModal('modal-confirm-import'));
+  f('confirmImportBtn').addEventListener('click', () => {
+    RDWE.closeModal('modal-confirm-import');
+    post('importFromOx');
+    RDWE.toast.info('Import', 'Import started...');
+  });
+
+  f('confirmDeleteBtn').addEventListener('click', () => {
+    if (pendingDelete) {
+      post('deleteItem', { name: pendingDelete }).then(() => {
+        setTimeout(() => post('reloadItems'), 400);
+        pendingDelete = null;
+      });
+    }
+    RDWE.closeModal('modal-confirm-delete');
+  });
+
+  f('addNewItem').addEventListener('click', () => openItemModal());
+  f('saveItem').addEventListener('click', saveItem);
+
+  f('exportLuaBtn').addEventListener('click', openExportModal);
+
+  f('exportOnlyNew').addEventListener('change', () => {
+    if (f('modal-export-lua').classList.contains('active')) openExportModal();
+  });
+
+  f('copyLuaBtn').addEventListener('click', copyLua);
+  f('copyLuaBtn2').addEventListener('click', copyLua);
+
+  // Search (debounced)
+  let st;
+  f('searchInput').addEventListener('input', e => {
+    clearTimeout(st);
+    st = setTimeout(() => filterItems(e.target.value), 260);
+  });
+
+  // ESC key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('app').style.display === 'block') {
+      // RDWE handles modal close — only close manager if no modal is open
+      const anyModal = document.querySelector('.modal-backdrop.active');
+      if (!anyModal) closeManager();
+    }
+  });
+});
+
+// ================================================================
+// DEV / LOCALHOST TEST DATA
+// ================================================================
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  setTimeout(() => {
+    const items = {
+      bread:       { label:'Bread', weight:200, stack:true },
+      water:       { label:'Water', weight:500, stack:true, consume:1 },
+      pistol:      { label:'Pistol', weight:900, weapon:true, ammoname:'ammo-9', stack:false },
+      ammo_9:      { label:'9mm Ammo', weight:15, ammotype:'AMMO_PISTOL', stack:true },
+      bandage:     { label:'Bandage', weight:50, consume:1, stack:true,
+                     client:{ status:{health:200000}, usetime:2500, cancel:true } },
+      burger:      { label:'Burger', weight:220, consume:1, stack:true,
+                     client:{ status:{hunger:200000}, anim:{dict:'mp_player_inteat@burger', clip:'mp_player_int_eat_burger_fp'},
+                               prop:{model:'prop_cs_burger_01',pos:{x:0,y:0,z:0},rot:{x:0,y:0,z:0}}, usetime:2500 }},
+      lockpick:    { label:'Lockpick', weight:30, consume:0.25, stack:true },
+      phone:       { label:'Phone', weight:200, stack:false },
+      radio:       { label:'Radio', weight:300, stack:false },
+      drug_test:   { label:'Drug Test Kit', weight:80, stack:true },
+      weapon_bat:  { label:'Baseball Bat', weight:1200, weapon:true, stack:false, durability:100 },
+      coffee:      { label:'Coffee', weight:250, consume:1, degrade:30, stack:true },
+    };
+    const dbItems = { bandage:{}, lockpick:{}, drug_test:{} }; // simulated DB items
+    openManager(items, dbItems);
+  }, 100);
+}
+</script>
+</body>
+</html>
