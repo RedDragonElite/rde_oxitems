@@ -106,13 +106,7 @@ body::after {
   background-size: 50px 50px;
   pointer-events:none; z-index:0;
 }
-body::before {
-  content:'';
-  position:fixed; top:0; left:0; right:0; height:2px;
-  background: linear-gradient(90deg, transparent, var(--red), transparent);
-  animation: rdwe-scan 9s linear infinite;
-  pointer-events:none; opacity:.07; z-index:9999;
-}
+/* body::before scanline removed — too distracting in-game */
 
 /* ────────────────────────────────────────────────────────────────
    1. ANIMATIONS
